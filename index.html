@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Чат с друзьями</title>
+    <style>
+        body { font-family: sans-serif; background: #222; color: white; text-align: center; padding: 50px; }
+        .container { background: #333; padding: 20px; border-radius: 10px; display: inline-block; }
+        input { display: block; margin: 10px auto; padding: 10px; width: 250px; }
+        button { padding: 10px 20px; cursor: pointer; background: #f57c00; border: none; color: white; font-weight: bold; }
+        #chat { display: none; }
+        #messages { height: 200px; overflow-y: auto; border: 1px solid #555; margin-bottom: 10px; padding: 10px; text-align: left; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div id="login-form">
+        <h2>Вход в чат</h2>
+        <input type="email" id="email" placeholder="Email">
+        <input type="password" id="password" placeholder="Пароль">
+        <button id="loginBtn">Войти / Регистрация</button>
+    </div>
+
+    <div id="chat">
+        <h2>Привет, <span id="userEmail"></span></h2>
+        <div id="messages"></div>
+        <input type="text" id="msgInput" placeholder="Твое сообщение...">
+        <button id="sendBtn">Отправить</button>
+    </div>
+</div>
+
+<script type="module">
+    // Подключаем Firebase
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+    import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+    import { getFirestore, collection, addDoc, query, orderBy, onSnapshot } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+
+    // Твой конфиг
+    const firebaseConfig = {
+        apiKey: "AIzaSyBM8JOLOJVKSwVfMJ7uECeaZMf-yESPgQ",
+        authDomain: "noname-base.firebaseapp.com",
+        projectId: "noname-base",
+        storageBucket: "noname-base.firebasestorage.app",
+        messagingSenderId: "411381246540",
+        appId: "1:411381246540:web:291f033d6637933455e2e9"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const db = getFirestore(app);
+
+    // Логика входа
+    document.getElementById('loginBtn').onclick = () => {
+        const email = document.getElementById('email').value;
+        const pass = document.getElementById('password').value;
+        
+        signInWithEmailAndPassword(auth, email, pass).catch(() => {
+            createUserWithEmailAndPassword(auth, email, pass);
+        });
+    };
+
+    // Переключение экранов при входе
+    onAuthStateChanged(auth, (user) => {
+        if (user) {
+            document.getElementById('login-form').style.display = 'none';
+            document.getElementById('chat').style.display = 'block';
+            document.getElementById('userEmail').innerText = user.email;
+            loadMessages();
+        }
+    });
+
+    // Отправка сообщения
+    document.getElementById('sendBtn').onclick = async () => {
+        const text = document.getElementById('msgInput').value;
+        if (text) {
+            await addDoc(collection(db, "messages"), {
+                text: text,
+                user: auth.currentUser.email,
+                date: Date.now()
+            });
+            document.getElementById('msgInput').value = "";
+        }
+    };
+
+    // Загрузка сообщений
+    function loadMessages() {
+        const q = query(collection(db, "messages"), orderBy("date", "asc"));
+        onSnapshot(q, (snapshot) => {
+            const msgDiv = document.getElementById('messages');
+            msgDiv.innerHTML = "";
+            snapshot.forEach(doc => {
+                msgDiv.innerHTML += `<div><b>${doc.data().user}:</b> ${doc.data().text}</div>`;
+            });
+            msgDiv.scrollTop = msgDiv.scrollHeight;
+        });
+    }
+</script>
+</body>
+</html>
